@@ -1,5 +1,9 @@
 import React, { useState } from "react";
 import API_BASE_URL from "../component/config";
+import {
+  ErrorNotification,
+  SuccessNotification,
+} from "../tosterNotification/tosters";
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -34,6 +38,7 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
+        // ErrorNotification(data.message || "Login failed");
         throw new Error(data.message || "Login failed");
       }
 
@@ -47,9 +52,11 @@ export default function Login() {
       }
 
       // Redirect to dashboard or home page
+      SuccessNotification("Login Successful");
       window.location.href = "/dashboard"; // Change this to your dashboard route
     } catch (err) {
       setError(err.message);
+      ErrorNotification(err.message);
     } finally {
       setLoading(false);
     }
@@ -79,11 +86,11 @@ export default function Login() {
                     <p className="mb-7">Your Admin Dashboard</p>
 
                     <form onSubmit={handleSubmit} className="max-w-md mx-auto">
-                      {error && (
+                      {/* {error && (
                         <div className="mb-4 p-3 text-sm text-red-500 bg-red-100 rounded">
                           {error}
                         </div>
-                      )}
+                      )} */}
 
                       <div className="mb-3">
                         <label htmlFor="email_id" className="form-label">

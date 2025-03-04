@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Topheader from "../../component/Topheader";
 import ViewMentor from "./ViewMentor"; // Import the ViewMentor component
 import EditMentor from "./EditMentorData";
@@ -7,7 +7,6 @@ import axios from "axios";
 import API_URL from "../../config";
 
 const MentorList = () => {
-  // console.log("api",API_URL)
   const [sortedMentors, setSortedMentors] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [viewDetail, setViewDetail] = useState(false);
@@ -28,12 +27,13 @@ const MentorList = () => {
   // Fetch mentors based on category (or all if no category selected)
   const fetchMentors = async (category) => {
     try {
-      let url = `${API_URL}/admin/api/mentors/get-mentor`; // Default URL for all mentors
+      let url = `${API_URL}/admin/api/get-mentor`; // Default URL for all mentors
       if (category) {
         const encodedCategory = encodeURIComponent(category); // Ensure the category is URL encoded
         url += `?category=${encodedCategory}`; // Append category to URL
       }
-      const response = await axios.get(url);
+      const response = await axios.post(url);
+      console.log(response.data.data);
       setSortedMentors(response.data.data);
     } catch (error) {
       console.log("Failed to fetch mentors", error);
@@ -67,11 +67,14 @@ const MentorList = () => {
     setSortConfig({ key, direction });
 
     const sorted = [...sortedMentors].sort((a, b) => {
-      if (a[key].toLowerCase() < b[key].toLowerCase()) {
-        return direction === "asc" ? -1 : 1;
-      }
-      if (a[key].toLowerCase() > b[key].toLowerCase()) {
-        return direction === "asc" ? 1 : -1;
+      // Add handling for null/undefined values, case-insensitivity
+      if (a[key] && b[key]) {
+        if (a[key].toLowerCase() < b[key].toLowerCase()) {
+          return direction === "asc" ? -1 : 1;
+        }
+        if (a[key].toLowerCase() > b[key].toLowerCase()) {
+          return direction === "asc" ? 1 : -1;
+        }
       }
       return 0;
     });
@@ -120,7 +123,7 @@ const MentorList = () => {
           <div className="container-fluid">
             <div className="card bg-info-subtle shadow-none position-relative overflow-hidden mb-4">
               <div className="card-body px-4 py-3">
-                <div className="row align-items-center pt-5">
+                <div className="row align-items-center pt-3">
                   <div className="col-9">
                     <h4 className="fw-semibold mb-8">Mentor List</h4>
                     <nav aria-label="breadcrumb">
@@ -187,20 +190,25 @@ const MentorList = () => {
                   <table className="table table-striped">
                     <thead>
                       <tr>
-                        <th scope="col">Image</th>
                         <th
                           scope="col"
-                          onClick={() => handleSort("name")}
                           style={{ cursor: "pointer" }}
                         >
-                          Name {handleSortingIcon("name")}
+                          Image
                         </th>
                         <th
                           scope="col"
-                          onClick={() => handleSort("category")}
+                          onClick={() => handleSort("firstName")}
                           style={{ cursor: "pointer" }}
                         >
-                          Category {handleSortingIcon("category")}
+                          Name {handleSortingIcon("firstName")}
+                        </th>
+                        <th
+                          scope="col"
+                          onClick={() => handleSort("email")}
+                          style={{ cursor: "pointer" }}
+                        >
+                          Email {handleSortingIcon("email")}
                         </th>
                         <th
                           scope="col"
@@ -215,23 +223,18 @@ const MentorList = () => {
                     <tbody>
                       {sortedMentors.map((mentor) => (
                         <tr key={mentor._id}>
-                          <td onClick={() => handleViewDetails(mentor)}>
+                          <td>
                             <img
-                              src={`http://localhost:5000${mentor.image}`}
+                              src={mentor.image}
                               alt={mentor.name}
-                              style={{
-                                width: "50px",
-                                height: "50px",
-                                objectFit: "cover",
-                                borderRadius: "50%",
-                              }}
+                              className="img-fluid rounded-circle"
                             />
                           </td>
                           <td onClick={() => handleViewDetails(mentor)}>
                             {mentor.name}
                           </td>
-                          <td style={{ textTransform: "capitalize" }}>
-                            {mentor.category}
+                          <td>
+                            {mentor.email}
                           </td>
                           <td style={{ textTransform: "capitalize" }}>
                             {mentor.designation}
