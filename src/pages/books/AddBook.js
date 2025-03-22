@@ -6,6 +6,7 @@ import {
   ErrorNotification,
   SuccessNotification,
 } from "../../tosterNotification/tosters";
+import { useNavigate } from "react-router-dom";
 
 const AddBook = () => {
   const [formData, setFormData] = useState({
@@ -18,6 +19,7 @@ const AddBook = () => {
   });
   const [tagInput, setTagInput] = useState("");
   const tagInputRef = useRef(null);
+  const navigation = useNavigate();
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -113,6 +115,7 @@ const AddBook = () => {
       ErrorNotification("Something went wrong");
     } else {
       SuccessNotification("Book added successfully");
+      navigation("/books-list")
     }
   };
 

@@ -6,9 +6,11 @@ import {
 } from "../../tosterNotification/tosters";
 import axios from "axios";
 import API_URL from "../../config";
+import { useNavigate } from "react-router-dom";
 
 const AddEvent = () => {
   const [formData, setFormData] = useState({});
+  const navigate = useNavigate();
 
   // handling input change
   const handleInputChange = (e) => {
@@ -43,6 +45,7 @@ const AddEvent = () => {
         throw new Error("Something went wrong");
       } else {
         SuccessNotification("Event added successfully");
+        navigate("/events-list");
       }
     } catch (error) {
       console.log("Error:", error);

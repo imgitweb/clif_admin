@@ -201,6 +201,7 @@ const AddMentor = () => {
     skills: [],
     languages: [],
     // availableTime: "",
+    password : "",
     rating: 0,
     category: "",
     gender: "",
@@ -340,6 +341,8 @@ const AddMentor = () => {
     if (!formData.linkedin) newError.linkedin = "Linkedin is required.";
     if (!formData.specializationIn)
       newError.specializationIn = "specialization is required.";
+    if(!formData.password) newError.password = "Password is required.";
+    if(formData.password < 6) newError.password = "Password must be at least 6 characters"
 
     // trigger error if any
     if (Object.keys(newError).length > 0) {
@@ -965,6 +968,30 @@ const AddMentor = () => {
                                 className="form-select"
                                 styles={customStyles}
                               />
+                              <div>
+                                {errors.languages && (
+                                  <span
+                                    style={{ color: "red", fontSize: "12px" }}
+                                  >
+                                    {errors.languages}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="col-md-12 mt-3">
+                              <label htmlFor="password" className="form-label">
+                              Password*
+                              </label>
+                             <input
+                             type = "password"
+                             name="password"
+                             id="password"
+                             placeholder="Assign password to mentor..."
+                             value={formData.password} 
+                             onChange={handleInputChange}
+                             className="form-control"
+                             />
+
                               <div>
                                 {errors.languages && (
                                   <span

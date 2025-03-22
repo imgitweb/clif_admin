@@ -14,7 +14,7 @@ const UsersList = () => {
   const [mentors, setMentors] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showMentorModal, setShowMentorModal] = useState(false);
-  const usersPerPage = 12;
+  const usersPerPage = 9;
   const navigate = useNavigate();
   const token =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2N2I4NjZlZDEzYWNiMWI4NzFhNDMwYWYiLCJyb2xlIjoiQWRtaW4iLCJpYXQiOjE3NDAxNDExODQsImV4cCI6MTc0MDIyNzU4NH0.T29qiJ3YnuJ12_ENGVp7_aiIgEDBZYb6QD5xHUkbBOs";

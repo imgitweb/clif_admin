@@ -30,10 +30,7 @@ export default function Header() {
                 </a>
               </li>
             </ul>
-            <ul className="navbar-nav quick-links d-none d-lg-flex align-items-center">
-              {/* ------------------------------- */}
-              {/* start apps Dropdown */}
-              {/* ------------------------------- */}
+            {/* <ul className="navbar-nav quick-links d-none d-lg-flex align-items-center">
               <li className="nav-item nav-icon-hover-bg rounded w-auto dropdown d-none d-lg-block mx-0">
                 <div className="hover-dd">
                   <a className="nav-link" href="javascript:void(0)">
@@ -321,9 +318,6 @@ export default function Header() {
                   </div>
                 </div>
               </li>
-              {/* ------------------------------- */}
-              {/* end apps Dropdown */}
-              {/* ------------------------------- */}
               <li className="nav-item dropdown-hover d-none d-lg-block">
                 <a className="nav-link" href="../dark/app-chat.html">
                   Chat
@@ -339,7 +333,7 @@ export default function Header() {
                   Email
                 </a>
               </li>
-            </ul>
+            </ul> */}
             <div className="d-block d-lg-none py-4">
               <a href="../dark/index.html" className="text-nowrap logo-img">
                 <img
@@ -381,9 +375,6 @@ export default function Header() {
                   <i className="ti ti-align-justified fs-7" />
                 </a>
                 <ul className="navbar-nav flex-row ms-auto align-items-center justify-content-center">
-                  {/* ------------------------------- */}
-                  {/* start language Dropdown */}
-                  {/* ------------------------------- */}
                   <li className="nav-item nav-icon-hover-bg rounded-circle">
                     <a
                       className="nav-link moon dark-layout"
@@ -481,12 +472,6 @@ export default function Header() {
                       </div>
                     </div>
                   </li>
-                  {/* ------------------------------- */}
-                  {/* end language Dropdown */}
-                  {/* ------------------------------- */}
-                  {/* ------------------------------- */}
-                  {/* start shopping cart Dropdown */}
-                  {/* ------------------------------- */}
                   <li className="nav-item nav-icon-hover-bg rounded-circle">
                     <a
                       className="nav-link position-relative"
@@ -501,12 +486,6 @@ export default function Header() {
                       </span>
                     </a>
                   </li>
-                  {/* ------------------------------- */}
-                  {/* end shopping cart Dropdown */}
-                  {/* ------------------------------- */}
-                  {/* ------------------------------- */}
-                  {/* start notification Dropdown */}
-                  {/* ------------------------------- */}
                   <li className="nav-item nav-icon-hover-bg rounded-circle dropdown">
                     <a
                       className="nav-link position-relative"

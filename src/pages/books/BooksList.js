@@ -193,7 +193,7 @@ const BooksList = () => {
                                       </span>
                                     ))}
                                   </td>
-                                  <td>
+                                  <td className="d-flex gap-2">
                                     <button
                                       className="btn btn-info"
                                       onClick={() =>
