@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { Search, Grid, List, ChevronRight, ChevronDown } from "lucide-react";
+import { Search, Grid, List, ChevronRight, ChevronDown, Calendar } from "lucide-react";
 import "./CareerGrowth.css";
 import Topheader from "../../component/Topheader";
 
@@ -15,6 +15,8 @@ const CareerGrowth = () => {
   const [error, setError] = useState(null);
   const [showFocusAreas, setShowFocusAreas] = useState(true);
   const [showKeyActivities, setShowKeyActivities] = useState(true);
+  const [showRecommendedBooks, setShowRecommendedBooks] = useState(true);
+  const [showEvent, setShowEvent] = useState(true);
   const headerRef = useRef(null);
   const location = useLocation();
 
@@ -150,6 +152,11 @@ const CareerGrowth = () => {
         editedData["Focus Areas"] || currentData["Focus Areas"] || [],
       "Key Activities":
         editedData["Key Activities"] || currentData["Key Activities"] || [],
+      "Recommended Books":
+        editedData["Recommended Books"] ||
+        currentData["Recommended Books"] ||
+        [],
+        "Top 5 Events/Webinars" : editedData["Top 5 Events/Webinars"] || currentData["Top 5 Events/Webinars"] || [],
     };
   };
 
@@ -171,6 +178,7 @@ const CareerGrowth = () => {
 
   const RenderProgramView = () => {
     const mergedData = getMergedData();
+    // console.log(mergedData["Top 5 Events/Webinars"]);
 
     return (
       <div className="content-body p-4">
@@ -227,51 +235,214 @@ const CareerGrowth = () => {
           )}
         </div>
 
-        <div className="mb-6">
-          <div
-            className="section-header dropdown-header"
-            onClick={() => setShowKeyActivities(!showKeyActivities)}
-          >
-            <h4>Key Activities</h4>
-            <ChevronDown
-              size={18}
-              strokeWidth={1.75}
-              className={`dropdown-icon ${showKeyActivities ? "rotate" : ""}`}
-            />
-          </div>
-
-          {showKeyActivities && (
-            <div className="skills-section">
-              {mergedData["Key Activities"].map((activity, idx) => (
-                <div key={idx} className="skill-card">
-                  <textarea
-                    value={activity}
-                    onChange={(e) => {
-                      const updatedKeyActivities = [
-                        ...mergedData["Key Activities"],
-                      ];
-                      updatedKeyActivities[idx] = e.target.value;
-                      handleFieldChange("Key Activities", updatedKeyActivities);
-                    }}
-                    className="form-control"
-                  />
-                </div>
-              ))}
-              <button
-                className="btn btn-sm btn-outline-primary mt-2"
-                onClick={() => {
-                  const updatedKeyActivities = [
-                    ...mergedData["Key Activities"],
-                    "",
-                  ];
-                  handleFieldChange("Key Activities", updatedKeyActivities);
-                }}
-              >
-                Add Key Activity
-              </button>
+        {selectedProgram === "NetX" && (
+          <div className="mb-6">
+            <div
+              className="section-header dropdown-header"
+              onClick={() => setShowKeyActivities(!showKeyActivities)}
+            >
+              <h4>Key Activities</h4>
+              <ChevronDown
+                size={18}
+                strokeWidth={1.75}
+                className={`dropdown-icon ${showKeyActivities ? "rotate" : ""}`}
+              />
             </div>
-          )}
-        </div>
+
+            {showKeyActivities && (
+              <div className="skills-section">
+                {mergedData["Key Activities"].map((activity, idx) => (
+                  <div key={idx} className="skill-card">
+                    <textarea
+                      value={activity}
+                      onChange={(e) => {
+                        const updatedKeyActivities = [
+                          ...mergedData["Key Activities"],
+                        ];
+                        updatedKeyActivities[idx] = e.target.value;
+                        handleFieldChange(
+                          "Key Activities",
+                          updatedKeyActivities
+                        );
+                      }}
+                      className="form-control"
+                    />
+                  </div>
+                ))}
+                <button
+                  className="btn btn-sm btn-outline-primary mt-2"
+                  onClick={() => {
+                    const updatedKeyActivities = [
+                      ...mergedData["Key Activities"],
+                      "",
+                    ];
+                    handleFieldChange("Key Activities", updatedKeyActivities);
+                  }}
+                >
+                  Add Key Activity
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {selectedProgram === "BookVault" && (
+          <div className="mb-6">
+            <div
+              className="section-header dropdown-header"
+              onClick={() => setShowRecommendedBooks(!showRecommendedBooks)}
+            >
+              <h4>Recommended Books</h4>
+              <ChevronDown
+                size={18}
+                strokeWidth={1.75}
+                className={`dropdown-icon ${
+                  showRecommendedBooks ? "rotate" : ""
+                }`}
+              />
+            </div>
+
+            {showRecommendedBooks && (
+              <div className="skills-section">
+                {/* Technical Books Section */}
+                <div>
+                  <h5 className="section-header">Technical Books</h5>
+                  {mergedData["Recommended Books"]?.["Technical Books"]?.map(
+                    (book, idx) => (
+                      <div key={idx} className="skill-card">
+                        <textarea
+                          value={book.book_name}
+                          onChange={(e) => {
+                            const updatedTechnicalBooks = [
+                              ...mergedData["Recommended Books"]?.[
+                                "Technical Books"
+                              ],
+                            ];
+                            updatedTechnicalBooks[idx].book_name =
+                              e.target.value; // Update the book name
+                            handleFieldChange("Recommended Books", {
+                              ...mergedData["Recommended Books"],
+                              "Technical Books": updatedTechnicalBooks,
+                            });
+                          }}
+                          className="form-control"
+                        />
+                      </div>
+                    )
+                  )}
+                  <button
+                    className="btn btn-sm btn-outline-primary mt-2"
+                    onClick={() => {
+                      const updatedTechnicalBooks = [
+                        ...(mergedData["Recommended Books"]?.[
+                          "Technical Books"
+                        ] || []),
+                        { book_name: "" }, // Add a new empty book object
+                      ];
+                      handleFieldChange("Recommended Books", {
+                        ...mergedData["Recommended Books"],
+                        "Technical Books": updatedTechnicalBooks,
+                      });
+                    }}
+                  >
+                    Add Technical Book
+                  </button>
+                </div>
+
+                {/* Non-Technical Books Section */}
+                <div className="mt-6">
+                  {/* Displaying Non-Technical Book */}
+                  {mergedData["Recommended Books"]?.["Non-Technical Books"]
+                    ?.book_name && (
+                    <div className="skill-card">
+                      <textarea
+                        value={
+                          mergedData["Recommended Books"]?.[
+                            "Non-Technical Books"
+                          ]?.book_name
+                        }
+                        onChange={(e) => {
+                          // Updating the book_name inside the object
+                          handleFieldChange("Recommended Books", {
+                            ...mergedData["Recommended Books"],
+                            "Non-Technical Books": {
+                              ...mergedData["Recommended Books"]?.[
+                                "Non-Technical Books"
+                              ],
+                              book_name: e.target.value, // Update the book name
+                            },
+                          });
+                        }}
+                        className="form-control"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {selectedProgram === "EventPulse" && (
+          <div className="mb-6">
+            <div
+              className="section-header dropdown-header"
+              onClick={() => setShowEvent(!showEvent)}
+            >
+              <h4>Events</h4>
+              <ChevronDown
+                size={18}
+                strokeWidth={1.75}
+                className={`dropdown-icon ${showEvent ? "rotate" : ""}`}
+              />
+            </div>
+
+            {showEvent && (
+              <div className="skills-section">
+                {showEvent && (
+                  <div>
+                    <div className="skills-section">
+                      {/* <h5>Technical Books</h5> */}
+                      {mergedData["Top 5 Events/Webinars"]?.map(
+                        (events, idx) => (
+                          <div
+                            key={idx}
+                            className="skill-card"
+                            // onClick={() => {
+                            //   handleEventClick(events);
+                            // }}
+                          >
+                            <div className="skill-icon">
+                              <Calendar size={22} strokeWidth={1.75} />
+                            </div>
+                            <div className="skill-content">
+                              <div className="skill-title">{events}</div>
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+                <button
+                  className="btn btn-sm btn-outline-primary mt-2"
+                  onClick={() => {
+                    const updatedKeyActivities = [
+                      ...mergedData["Top 5 Events/Webinars"],
+                      "",
+                    ];
+                    handleFieldChange(
+                      "Top 5 Events/Webinars",
+                      updatedKeyActivities
+                    );
+                  }}
+                >
+                  Add Event
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -457,7 +628,7 @@ const CareerGrowth = () => {
                       ? RenderProgramView()
                       : RenderMilestoneView()}
 
-                    <div className="save-btn-container">
+                    <div style={{ marginLeft: "75%" }}>
                       <button className="btn btn-primary" onClick={handleSave}>
                         Save Changes
                       </button>
