@@ -1,0 +1,518 @@
+import { useEffect, useState } from "react";
+import Topheader from "../../component/Topheader";
+import axios from "axios";
+import API_URL from "../../config";
+
+const VisitorLogs = () => {
+  const [allVisitors, setAllVisitors] = useState([]);
+  const [filteredVisitors, setFilteredVisitors] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [dateFilter, setDateFilter] = useState("all"); // all, today, yesterday, last7days, last30days, custom
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  const [durationFilter, setDurationFilter] = useState("all"); // all, short, medium, long
+
+  useEffect(() => {
+    fetchVisitorLogs();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [allVisitors, dateFilter, customStartDate, customEndDate, durationFilter]);
+
+  const fetchVisitorLogs = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${API_URL}/log/visiter`);
+      if (response.status === 200) {
+        console.log(response.data);
+        setAllVisitors(response.data.visitors || []);
+      }
+    } catch (error) {
+      console.error("Error fetching visitor logs", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...allVisitors];
+
+    // Apply date filter
+    filtered = filterVisitorsByDate(filtered);
+
+    // Apply duration filter
+    filtered = filterVisitorsByDuration(filtered);
+
+    setFilteredVisitors(filtered);
+  };
+
+  const filterVisitorsByDate = (visitors) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const last7days = new Date(today);
+    last7days.setDate(last7days.getDate() - 7);
+    const last30days = new Date(today);
+    last30days.setDate(last30days.getDate() - 30);
+
+    switch (dateFilter) {
+      case "today":
+        return visitors.filter(
+          (visitor) => new Date(visitor.createdAt) >= today
+        );
+      case "yesterday":
+        return visitors.filter((visitor) => {
+          const visitDate = new Date(visitor.createdAt);
+          return visitDate >= yesterday && visitDate < today;
+        });
+      case "last7days":
+        return visitors.filter(
+          (visitor) => new Date(visitor.createdAt) >= last7days
+        );
+      case "last30days":
+        return visitors.filter(
+          (visitor) => new Date(visitor.createdAt) >= last30days
+        );
+      case "custom":
+        if (customStartDate && customEndDate) {
+          const startDate = new Date(customStartDate);
+          const endDate = new Date(customEndDate);
+          endDate.setHours(23, 59, 59, 999); // Include the entire end date
+          return visitors.filter((visitor) => {
+            const visitDate = new Date(visitor.createdAt);
+            return visitDate >= startDate && visitDate <= endDate;
+          });
+        }
+        return visitors;
+      default:
+        return visitors;
+    }
+  };
+
+  const filterVisitorsByDuration = (visitors) => {
+    switch (durationFilter) {
+      case "short":
+        return visitors.filter((visitor) => visitor.duration < 120); // Less than 2 minutes
+      case "medium":
+        return visitors.filter(
+          (visitor) => visitor.duration >= 120 && visitor.duration < 300
+        ); // 2-5 minutes
+      case "long":
+        return visitors.filter((visitor) => visitor.duration >= 300); // 5+ minutes
+      default:
+        return visitors;
+    }
+  };
+
+  const formatDateTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
+  const formatDuration = (seconds) => {
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    if (minutes < 60) {
+      return `${minutes}m ${remainingSeconds}s`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
+  };
+
+  const getLocationString = (location) => {
+    if (!location) return "Unknown";
+    const { country, state } = location;
+    if (country === "Unknown" && state === "Unknown") return "Unknown";
+    if (country === "Unknown") return state;
+    if (state === "Unknown") return country;
+    return `${state}, ${country}`;
+  };
+
+  const getDurationBadge = (duration) => {
+    if (duration < 30) return "badge bg-danger"; // Very short visit
+    if (duration < 120) return "badge bg-warning"; // Short visit
+    if (duration < 300) return "badge bg-info"; // Medium visit
+    return "badge bg-success"; // Long visit
+  };
+
+  const getDateRangeText = () => {
+    switch (dateFilter) {
+      case "today":
+        return "Today";
+      case "yesterday":
+        return "Yesterday";
+      case "last7days":
+        return "Last 7 days";
+      case "last30days":
+        return "Last 30 days";
+      case "custom":
+        if (customStartDate && customEndDate) {
+          return `${new Date(
+            customStartDate
+          ).toLocaleDateString()} - ${new Date(
+            customEndDate
+          ).toLocaleDateString()}`;
+        }
+        return "Custom range";
+      default:
+        return "All time";
+    }
+  };
+
+  const getFilteredStats = () => {
+    const totalVisitors = filteredVisitors.length;
+    const engagedVisitors = filteredVisitors.filter(
+      (v) => v.duration >= 120
+    ).length;
+    const avgDuration =
+      filteredVisitors.length > 0
+        ? Math.round(
+            filteredVisitors.reduce((sum, v) => sum + v.duration, 0) /
+              filteredVisitors.length
+          )
+        : 0;
+    const uniqueIPs = new Set(filteredVisitors.map((v) => v.ip)).size;
+
+    return { totalVisitors, engagedVisitors, avgDuration, uniqueIPs };
+  };
+
+  const renderVisitorRow = (visitor, index) => {
+    return (
+      <tr key={`visitor-${visitor._id}-${index}`}>
+        <td>
+          <div className="fw-medium text-primary">
+            {formatDateTime(visitor.createdAt)}
+          </div>
+          <small className="text-muted">
+            {new Date(visitor.createdAt).toLocaleDateString("en-IN")}
+          </small>
+        </td>
+        <td>
+          <code className="bg-light px-2 py-1 rounded">{visitor.ip}</code>
+        </td>
+        <td>
+          <div className="d-flex align-items-center">
+            <i className="ti ti-map-pin me-2 text-muted"></i>
+            <span>{getLocationString(visitor.location)}</span>
+          </div>
+        </td>
+        <td>
+          <div className="text-wrap" style={{ maxWidth: "200px" }}>
+            <code className="text-break">{visitor.lastPage}</code>
+          </div>
+        </td>
+        <td>
+          <span className={getDurationBadge(visitor.duration)}>
+            {formatDuration(visitor.duration)}
+          </span>
+        </td>
+        <td>
+          <span className="badge bg-success">Active</span>
+        </td>
+      </tr>
+    );
+  };
+
+  const stats = getFilteredStats();
+
+  return (
+    <>
+      <div className="main-wrapper">
+        <Topheader />
+        <div className="">
+          <div className="page-wrapper mt-5">
+            <div className="container-fluid">
+              <div className="card bg-info-subtle shadow-none position-relative overflow-hidden mb-4">
+                <div className="card-body px-4 py-3">
+                  <div className="row align-items-center">
+                    <div className="col-9">
+                      <h4 className="fw-semibold mb-8">Visitor Logs</h4>
+                      <nav aria-label="breadcrumb">
+                        <ol className="breadcrumb">
+                          <li className="breadcrumb-item">
+                            <a
+                              className="text-muted text-decoration-none"
+                              href="../dark/index.html">
+                              Home
+                            </a>
+                          </li>
+                        </ol>
+                      </nav>
+                    </div>
+                    <div className="col-3">
+                      <div className="text-center mb-n5">
+                        <img
+                          src="../../assets/assets/images/backgrounds/welcome-bg.svg"
+                          alt="breadcrumb-img"
+                          className="img-fluid mb-n4"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="row">
+                <div className="col-12">
+                  <div className="card shadow-sm">
+                    <div className="card-body">
+                      <div className="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                          <h5 className="mb-0">
+                            Recent Visitors ({filteredVisitors.length} entries)
+                          </h5>
+                          <small className="text-muted">
+                            {getDateRangeText()} • Total: {allVisitors.length}{" "}
+                            visitors
+                          </small>
+                        </div>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={fetchVisitorLogs}
+                          disabled={loading}>
+                          <i
+                            className={`ti ${
+                              loading ? "ti-loader" : "ti-refresh"
+                            } ${
+                              loading ? "spinner-border spinner-border-sm" : ""
+                            }`}></i>
+                          {loading ? " Loading..." : " Refresh Logs"}
+                        </button>
+                      </div>
+                      {/* Stats Cards */}
+                      <div className="row mb-4">
+                        <div className="col-md-3">
+                          <div className="card bg-primary text-white">
+                            <div className="card-body text-center">
+                              <h4>{stats.totalVisitors}</h4>
+                              <small>Filtered Visitors</small>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div className="card bg-success text-white">
+                            <div className="card-body text-center">
+                              <h4>{stats.engagedVisitors}</h4>
+                              <small>Engaged Visitors (2min+)</small>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div className="card bg-info text-white">
+                            <div className="card-body text-center">
+                              <h4>{stats.avgDuration}s</h4>
+                              <small>Avg. Duration</small>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div className="card bg-warning text-white">
+                            <div className="card-body text-center">
+                              <h4>{stats.uniqueIPs}</h4>
+                              <small>Unique IPs</small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Filter Section */}
+                      <div className="row mb-4">
+                        <div className="col-12">
+                          <div className="card border">
+                            <div className="card-body py-3">
+                              <div className="row align-items-center">
+                                <div className="col-md-4">
+                                  <label className="form-label fw-semibold mb-2">
+                                    <i className="ti ti-calendar me-2"></i>Date
+                                    Filter
+                                  </label>
+                                  <select
+                                    className="form-select"
+                                    value={dateFilter}
+                                    onChange={(e) =>
+                                      setDateFilter(e.target.value)
+                                    }>
+                                    <option value="all">All Time</option>
+                                    <option value="today">Today</option>
+                                    <option value="yesterday">Yesterday</option>
+                                    <option value="last7days">
+                                      Last 7 Days
+                                    </option>
+                                    <option value="last30days">
+                                      Last 30 Days
+                                    </option>
+                                    <option value="custom">Custom Range</option>
+                                  </select>
+                                </div>
+                                <div className="col-md-4">
+                                  <label className="form-label fw-semibold mb-2">
+                                    <i className="ti ti-clock me-2"></i>Duration
+                                    Filter
+                                  </label>
+                                  <select
+                                    className="form-select"
+                                    value={durationFilter}
+                                    onChange={(e) =>
+                                      setDurationFilter(e.target.value)
+                                    }>
+                                    <option value="all">All Durations</option>
+                                    <option value="short">
+                                      Short (&lt; 2 min)
+                                    </option>
+                                    <option value="medium">
+                                      Medium (2-5 min)
+                                    </option>
+                                    <option value="long">Long (5+ min)</option>
+                                  </select>
+                                </div>
+                                {dateFilter === "custom" && (
+                                  <div className="col-md-4">
+                                    <div className="row">
+                                      <div className="col-6">
+                                        <label className="form-label fw-semibold mb-2">
+                                          From
+                                        </label>
+                                        <input
+                                          type="date"
+                                          className="form-control"
+                                          value={customStartDate}
+                                          onChange={(e) =>
+                                            setCustomStartDate(e.target.value)
+                                          }
+                                        />
+                                      </div>
+                                      <div className="col-6">
+                                        <label className="form-label fw-semibold mb-2">
+                                          To
+                                        </label>
+                                        <input
+                                          type="date"
+                                          className="form-control"
+                                          value={customEndDate}
+                                          onChange={(e) =>
+                                            setCustomEndDate(e.target.value)
+                                          }
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Filter Summary */}
+                      {(dateFilter !== "all" || durationFilter !== "all") && (
+                        <div className="alert alert-info mb-4">
+                          <div className="d-flex align-items-center justify-content-between">
+                            <div>
+                              <strong>Active Filters:</strong>
+                              {dateFilter !== "all" && (
+                                <span className="badge bg-primary ms-2">
+                                  {getDateRangeText()}
+                                </span>
+                              )}
+                              {durationFilter !== "all" && (
+                                <span className="badge bg-secondary ms-2">
+                                  {durationFilter === "short"
+                                    ? "Short visits"
+                                    : durationFilter === "medium"
+                                    ? "Medium visits"
+                                    : "Long visits"}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              className="btn btn-outline-secondary btn-sm"
+                              onClick={() => {
+                                setDateFilter("all");
+                                setDurationFilter("all");
+                                setCustomStartDate("");
+                                setCustomEndDate("");
+                              }}>
+                              Clear Filters
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {loading ? (
+                        <div className="text-center py-5">
+                          <div
+                            className="spinner-border text-primary"
+                            role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          <p className="mt-3 text-muted">
+                            Loading visitor logs...
+                          </p>
+                        </div>
+                      ) : filteredVisitors.length === 0 ? (
+                        <div className="text-center py-5">
+                          <div className="mb-3">
+                            <i
+                              className="ti ti-users"
+                              style={{ fontSize: "3rem", color: "#ccc" }}></i>
+                          </div>
+                          <h6 className="text-muted">No visitors found</h6>
+                          <p className="text-muted small">
+                            {allVisitors.length === 0
+                              ? "There are no visitor logs to display."
+                              : "No visitors match the selected filters. Try adjusting your filter criteria."}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="table-responsive">
+                          <table className="table table-striped table-hover">
+                            <thead className="table-dark">
+                              <tr>
+                                <th>Visit Time</th>
+                                <th>IP Address</th>
+                                <th>Location</th>
+                                <th>Last Page</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredVisitors
+                                .sort(
+                                  (a, b) =>
+                                    new Date(b.createdAt) -
+                                    new Date(a.createdAt)
+                                )
+                                .map((visitor, index) =>
+                                  renderVisitorRow(visitor, index)
+                                )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default VisitorLogs;

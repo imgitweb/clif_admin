@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Book, BookLock, BookPlus, Calendar, CalendarPlus, IdCard } from "lucide-react";
+import {
+  Book,
+  BookLock,
+  BookPlus,
+  Calendar,
+  CalendarPlus,
+  IdCard,
+} from "lucide-react";
 
 export default function Leftbar({ onButtonClick }) {
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -17,7 +24,7 @@ export default function Leftbar({ onButtonClick }) {
           <div className="brand-logo d-flex align-items-center justify-content-between">
             <Link to="/dashboard" className="text-nowrap logo-img">
               <img
-                src="./assets/logo/logo-light.png"
+                src="/assets/favicon.ico"
                 className="dark-logo"
                 alt="Logo-Dark"
                 width="50px"
@@ -26,8 +33,7 @@ export default function Leftbar({ onButtonClick }) {
             <Link
               to="#0"
               onClick={onButtonClick}
-              className="sidebartoggler ms-auto text-decoration-none fs-5 d-block d-xl-none"
-            >
+              className="sidebartoggler ms-auto text-decoration-none fs-5 d-block d-xl-none">
               <i className="ti ti-x" />
             </Link>
           </div>
@@ -40,8 +46,7 @@ export default function Leftbar({ onButtonClick }) {
                   className="sidebar-link has-arrow"
                   to="#0"
                   aria-expanded={openDropdown === "mentor"}
-                  onClick={() => toggleDropdown("mentor")}
-                >
+                  onClick={() => toggleDropdown("mentor")}>
                   <span className="d-flex">
                     <i className="ti ti-user" />
                   </span>
@@ -51,8 +56,7 @@ export default function Leftbar({ onButtonClick }) {
                   className={`first-level ${
                     openDropdown === "mentor" ? "show" : "collapse"
                   }`}
-                  aria-expanded={openDropdown === "mentor"}
-                >
+                  aria-expanded={openDropdown === "mentor"}>
                   <li className="sidebar-item">
                     <Link to="/add-mentor" className="sidebar-link">
                       <div className="round-16 d-flex align-items-center justify-content-center">
@@ -76,8 +80,7 @@ export default function Leftbar({ onButtonClick }) {
                   className="sidebar-link has-arrow"
                   to="#0"
                   aria-expanded={openDropdown === "book"}
-                  onClick={() => toggleDropdown("book")}
-                >
+                  onClick={() => toggleDropdown("book")}>
                   <span className="d-flex">
                     {/* <i className="ti ti-user" /> */}
                     <Book />
@@ -88,8 +91,7 @@ export default function Leftbar({ onButtonClick }) {
                   className={`first-level ${
                     openDropdown === "book" ? "show" : "collapse"
                   }`}
-                  aria-expanded={openDropdown === "book"}
-                >
+                  aria-expanded={openDropdown === "book"}>
                   <li className="sidebar-item">
                     <Link to="/add-book" className="sidebar-link">
                       <div className="round-16 d-flex align-items-center justify-content-center">
@@ -125,8 +127,7 @@ export default function Leftbar({ onButtonClick }) {
                   className="sidebar-link has-arrow"
                   to="#0"
                   aria-expanded={openDropdown === "event"}
-                  onClick={() => toggleDropdown("event")}
-                >
+                  onClick={() => toggleDropdown("event")}>
                   <span className="d-flex">
                     {/* <i className="ti ti-user" /> */}
                     <Calendar />
@@ -137,8 +138,7 @@ export default function Leftbar({ onButtonClick }) {
                   className={`first-level ${
                     openDropdown === "event" ? "show" : "collapse"
                   }`}
-                  aria-expanded={openDropdown === "event"}
-                >
+                  aria-expanded={openDropdown === "event"}>
                   <li className="sidebar-item">
                     <Link to="/add-events" className="sidebar-link">
                       <div className="round-16 d-flex align-items-center justify-content-center">
@@ -166,11 +166,10 @@ export default function Leftbar({ onButtonClick }) {
                   className="sidebar-link has-arrow"
                   to="#0"
                   aria-expanded={openDropdown === "certificate"}
-                  onClick={() => toggleDropdown("certificate")}
-                >
+                  onClick={() => toggleDropdown("certificate")}>
                   <span className="d-flex">
                     {/* <i className="ti ti-user" /> */}
-                    < IdCard/>
+                    <IdCard />
                   </span>
                   <span className="hide-menu">Certificates</span>
                 </Link>
@@ -178,8 +177,7 @@ export default function Leftbar({ onButtonClick }) {
                   className={`first-level ${
                     openDropdown === "certificate" ? "show" : "collapse"
                   }`}
-                  aria-expanded={openDropdown === "certificate"}
-                >
+                  aria-expanded={openDropdown === "certificate"}>
                   <li className="sidebar-item">
                     <Link to="/add-certificate" className="sidebar-link">
                       <div className="round-16 d-flex align-items-center justify-content-center">
@@ -195,6 +193,49 @@ export default function Leftbar({ onButtonClick }) {
                         <i className="ti ti-list" />
                       </div>
                       <span className="hide-menu">Certificates List</span>
+                    </Link>
+                  </li>
+                </ul>
+              </li>
+              <li className="sidebar-item">
+                <Link
+                  className="sidebar-link has-arrow"
+                  to="#0"
+                  aria-expanded={openDropdown === "logs"}
+                  onClick={() => toggleDropdown("logs")}>
+                  <span className="d-flex">
+                    {/* <i className="ti ti-user" /> */}
+                    <IdCard />
+                  </span>
+                  <span className="hide-menu">Logs</span>
+                </Link>
+                <ul
+                  className={`first-level ${
+                    openDropdown === "logs" ? "show" : "collapse"
+                  }`}
+                  aria-expanded={openDropdown === "logs"}>
+                  <li className="sidebar-item">
+                    <Link to="/frontend-logs" className="sidebar-link">
+                      <div className="round-16 d-flex align-items-center justify-content-center">
+                        <i className="ti ti-list" />
+                      </div>
+                      <span className="hide-menu">User Logs</span>
+                    </Link>
+                  </li>
+                  <li className="sidebar-item">
+                    <Link to="/visiter-logs" className="sidebar-link">
+                      <div className="round-16 d-flex align-items-center justify-content-center">
+                        <i className="ti ti-list" />
+                      </div>
+                      <span className="hide-menu">Visitor Logs</span>
+                    </Link>
+                  </li>
+                  <li className="sidebar-item">
+                    <Link to="/activity-logs" className="sidebar-link">
+                      <div className="round-16 d-flex align-items-center justify-content-center">
+                        <i className="ti ti-list" />
+                      </div>
+                      <span className="hide-menu">User Activity Logs</span>
                     </Link>
                   </li>
                 </ul>
@@ -228,8 +269,7 @@ export default function Leftbar({ onButtonClick }) {
                   border: "none",
                   background: "transparent",
                   color: "#007bff",
-                }}
-              >
+                }}>
                 <i style={{ fontSize: "1.5rem" }}></i>
               </button>
             </div>
