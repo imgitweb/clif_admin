@@ -16,6 +16,9 @@ import EventList from "./pages/events/EventList";
 import AddCertificates from "./pages/certificates/AddCertificates";
 import CertificateList from "./pages/certificates/ListCertificates";
 import PDFViewer from "./pages/books/PdfViewer";
+import FrontendLogs from "./pages/users/Frontendlogs";
+import VisitorLogs from "./pages/users/VisitorLogs";
+import UserActivity from "./pages/users/UserActivity";
 
 function App() {
   return (
@@ -33,8 +36,11 @@ function App() {
         <Route path="/read-book" element={<PDFViewer />} />
         {/* user list */}
         <Route path="/users-list" element={<UsersList />} />
+        <Route path="/users-list" element={<UsersList />} />
         {/* career growth */}
-        <Route path="/career-path" element={<CareerGrowth />} />
+        <Route path="/frontend-logs" element={<FrontendLogs />} />
+        <Route path="/visiter-logs" element={<VisitorLogs />} />
+        <Route path="/activity-logs" element={<UserActivity />} />
 
         {/* event route */}
         <Route path="/add-events" element={<AddEvent />} />
