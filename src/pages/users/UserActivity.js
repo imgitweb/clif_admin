@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Topheader from "../../component/Topheader";
 import axios from "axios";
 import API_URL from "../../config";
+
+const PAGE_SIZE = 10; // Number of users per page
 
 const UserActivity = () => {
   const [allUsers, setAllUsers] = useState([]);
@@ -11,25 +13,34 @@ const UserActivity = () => {
   const [dateFilter, setDateFilter] = useState("all"); // all, today, yesterday, last7days, last30days, custom
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
+  const [error, setError] = useState(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     fetchUserActivity();
   }, []);
 
+  // Apply filters and reset to page 1 on filter change
   useEffect(() => {
     applyFilters();
+    setCurrentPage(1);
   }, [allUsers, activeFilter, dateFilter, customStartDate, customEndDate]);
 
   const fetchUserActivity = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await axios.get(`${API_URL}/log/getUserActivity`);
       if (response.status === 200) {
-        console.log(response.data);
         setAllUsers(response.data.visitors || []);
+      } else {
+        setError("Failed to fetch user activity");
       }
-    } catch (error) {
-      console.error("Error fetching user activity", error);
+    } catch (err) {
+      setError("Error fetching user activity");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -37,11 +48,8 @@ const UserActivity = () => {
 
   const applyFilters = () => {
     let filtered = [...allUsers];
-
-    // Apply date filter first
     filtered = filterUsersByDate(filtered);
 
-    // Then apply status filter
     if (activeFilter === "online") {
       filtered = filtered.filter((user) => isUserOnline(user));
     } else if (activeFilter === "offline") {
@@ -77,7 +85,7 @@ const UserActivity = () => {
         if (customStartDate && customEndDate) {
           const startDate = new Date(customStartDate);
           const endDate = new Date(customEndDate);
-          endDate.setHours(23, 59, 59, 999); // Include the entire end date
+          endDate.setHours(23, 59, 59, 999);
           return users.filter((user) => {
             const loginDate = new Date(user.lastLogin);
             return loginDate >= startDate && loginDate <= endDate;
@@ -89,27 +97,29 @@ const UserActivity = () => {
     }
   };
 
-  const filterUsersByStatus = () => {
-    if (activeFilter === "all") {
-      setFilteredUsers(allUsers);
-    } else if (activeFilter === "online") {
-      setFilteredUsers(
-        allUsers.filter((user) => !user.lastLogout || isUserOnline(user))
-      );
-    } else if (activeFilter === "offline") {
-      setFilteredUsers(
-        allUsers.filter((user) => user.lastLogout && !isUserOnline(user))
-      );
-    }
-  };
-
   const isUserOnline = (user) => {
     if (!user.lastLogout) return true;
     const now = new Date();
     const lastActivity = new Date(user.lastLogout);
-    const timeDiff = (now - lastActivity) / (1000 * 60); // difference in minutes
-    return timeDiff < 5; // Consider online if last activity was within 5 minutes
+    const timeDiff = (now - lastActivity) / (1000 * 60);
+    return timeDiff < 5; // online if last logout within 5 mins
   };
+
+  // Pagination calculation with useMemo for performance
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+    return filteredUsers.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [filteredUsers, currentPage]);
+
+  const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
+
+  const handlePageChange = (page) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
+  // ... your existing utility functions like formatDateTime, formatDuration, getDurationBadge, getStatusBadge, getLastActivityTime, renderUserRow remain unchanged
+  // I will include them below without changes for completeness:
 
   const formatDateTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -138,24 +148,21 @@ const UserActivity = () => {
   };
 
   const getDurationBadge = (duration) => {
-    if (duration < 60) return "badge bg-danger"; // Very short session
-    if (duration < 300) return "badge bg-warning"; // Short session (< 5 min)
-    if (duration < 1800) return "badge bg-info"; // Medium session (< 30 min)
-    return "badge bg-success"; // Long session
+    if (duration < 60) return "badge bg-danger";
+    if (duration < 300) return "badge bg-warning";
+    if (duration < 1800) return "badge bg-info";
+    return "badge bg-success";
   };
 
   const getStatusBadge = (user) => {
-    if (isUserOnline(user)) {
-      return "badge bg-success";
-    }
-    return "badge bg-secondary";
+    return isUserOnline(user) ? "badge bg-success" : "badge bg-secondary";
   };
 
   const getLastActivityTime = (user) => {
     if (!user.lastLogout) return "Currently active";
     const now = new Date();
     const lastActivity = new Date(user.lastLogout);
-    const timeDiff = Math.floor((now - lastActivity) / (1000 * 60)); // difference in minutes
+    const timeDiff = Math.floor((now - lastActivity) / (1000 * 60));
 
     if (timeDiff < 1) return "Just now";
     if (timeDiff < 60) return `${timeDiff} min ago`;
@@ -264,6 +271,7 @@ const UserActivity = () => {
         <div className="">
           <div className="page-wrapper mt-5">
             <div className="container-fluid">
+              {/* Header Card */}
               <div className="card bg-info-subtle shadow-none position-relative overflow-hidden mb-4">
                 <div className="card-body px-4 py-3">
                   <div className="row align-items-center">
@@ -294,10 +302,12 @@ const UserActivity = () => {
                 </div>
               </div>
 
+              {/* Stats and Filter Section */}
               <div className="row">
                 <div className="col-12">
                   <div className="card shadow-sm">
                     <div className="card-body">
+                      {/* Top Info and Refresh */}
                       <div className="d-flex justify-content-between align-items-center mb-4">
                         <div>
                           <h5 className="mb-0">
@@ -388,36 +398,34 @@ const UserActivity = () => {
                                   </select>
                                 </div>
                                 {dateFilter === "custom" && (
-                                  <div className="col-md-6">
-                                    <div className="row">
-                                      <div className="col-6">
-                                        <label className="form-label fw-semibold mb-2">
-                                          From Date
-                                        </label>
-                                        <input
-                                          type="date"
-                                          className="form-control"
-                                          value={customStartDate}
-                                          onChange={(e) =>
-                                            setCustomStartDate(e.target.value)
-                                          }
-                                        />
-                                      </div>
-                                      <div className="col-6">
-                                        <label className="form-label fw-semibold mb-2">
-                                          To Date
-                                        </label>
-                                        <input
-                                          type="date"
-                                          className="form-control"
-                                          value={customEndDate}
-                                          onChange={(e) =>
-                                            setCustomEndDate(e.target.value)
-                                          }
-                                        />
-                                      </div>
+                                  <>
+                                    <div className="col-md-3">
+                                      <label className="form-label fw-semibold mb-2">
+                                        Start Date
+                                      </label>
+                                      <input
+                                        type="date"
+                                        className="form-control"
+                                        value={customStartDate}
+                                        onChange={(e) =>
+                                          setCustomStartDate(e.target.value)
+                                        }
+                                      />
                                     </div>
-                                  </div>
+                                    <div className="col-md-3">
+                                      <label className="form-label fw-semibold mb-2">
+                                        End Date
+                                      </label>
+                                      <input
+                                        type="date"
+                                        className="form-control"
+                                        value={customEndDate}
+                                        onChange={(e) =>
+                                          setCustomEndDate(e.target.value)
+                                        }
+                                      />
+                                    </div>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -425,8 +433,8 @@ const UserActivity = () => {
                         </div>
                       </div>
 
-                      {/* Filter Tabs */}
-                      <ul className="nav nav-tabs mb-4" role="tablist">
+                      {/* Status Tabs */}
+                      <ul className="nav nav-tabs mb-4">
                         <li className="nav-item">
                           <button
                             className={`nav-link ${
@@ -442,7 +450,7 @@ const UserActivity = () => {
                               activeFilter === "online" ? "active" : ""
                             }`}
                             onClick={() => setActiveFilter("online")}>
-                            Online ({getOnlineUsers().length})
+                            Online Users ({getOnlineUsers().length})
                           </button>
                         </li>
                         <li className="nav-item">
@@ -451,66 +459,104 @@ const UserActivity = () => {
                               activeFilter === "offline" ? "active" : ""
                             }`}
                             onClick={() => setActiveFilter("offline")}>
-                            Offline ({getOfflineUsers().length})
+                            Offline Users ({getOfflineUsers().length})
                           </button>
                         </li>
                       </ul>
 
-                      {loading ? (
-                        <div className="text-center py-5">
-                          <div
-                            className="spinner-border text-primary"
-                            role="status">
-                            <span className="visually-hidden">Loading...</span>
-                          </div>
-                          <p className="mt-3 text-muted">
-                            Loading user activity...
-                          </p>
+                      {/* Error Display */}
+                      {error && (
+                        <div className="alert alert-danger" role="alert">
+                          {error}
                         </div>
-                      ) : filteredUsers.length === 0 ? (
-                        <div className="text-center py-5">
-                          <div className="mb-3">
-                            <i
-                              className="ti ti-user-search"
-                              style={{ fontSize: "3rem", color: "#ccc" }}></i>
-                          </div>
-                          <h6 className="text-muted">No users found</h6>
-                          <p className="text-muted small">
-                            There are no users to display for the selected
-                            filter.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="table-responsive">
-                          <table className="table table-striped table-hover">
-                            <thead className="table-dark">
+                      )}
+
+                      {/* Table */}
+                      <div className="table-responsive">
+                        <table className="table table-hover mb-0">
+                          <thead>
+                            <tr>
+                              <th>User</th>
+                              <th>Last Login</th>
+                              <th>Last Logout</th>
+                              <th>Duration</th>
+                              <th>Status</th>
+                              <th>First Visit</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {!loading && paginatedUsers.length > 0 ? (
+                              paginatedUsers.map(renderUserRow)
+                            ) : loading ? (
                               <tr>
-                                <th>User</th>
-                                <th>Last Login</th>
-                                <th>Last Logout</th>
-                                <th>Session Duration</th>
-                                <th>Status</th>
-                                <th>First Visit</th>
+                                <td colSpan="6" className="text-center">
+                                  Loading...
+                                </td>
                               </tr>
-                            </thead>
-                            <tbody>
-                              {filteredUsers
-                                .sort(
-                                  (a, b) =>
-                                    new Date(b.lastLogin) -
-                                    new Date(a.lastLogin)
-                                )
-                                .map((user, index) =>
-                                  renderUserRow(user, index)
-                                )}
-                            </tbody>
-                          </table>
-                        </div>
+                            ) : (
+                              <tr>
+                                <td colSpan="6" className="text-center">
+                                  No users found.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination Controls */}
+                      {totalPages > 1 && (
+                        <nav aria-label="Page navigation" className="mt-3">
+                          <ul className="pagination justify-content-center">
+                            <li
+                              className={`page-item ${
+                                currentPage === 1 ? "disabled" : ""
+                              }`}>
+                              <button
+                                className="page-link"
+                                onClick={() =>
+                                  handlePageChange(currentPage - 1)
+                                }>
+                                Previous
+                              </button>
+                            </li>
+                            {[...Array(totalPages)].map((_, idx) => {
+                              const pageNum = idx + 1;
+                              return (
+                                <li
+                                  key={`page-${pageNum}`}
+                                  className={`page-item ${
+                                    pageNum === currentPage ? "active" : ""
+                                  }`}>
+                                  <button
+                                    className="page-link"
+                                    onClick={() => handlePageChange(pageNum)}>
+                                    {pageNum}
+                                  </button>
+                                </li>
+                              );
+                            })}
+                            <li
+                              className={`page-item ${
+                                currentPage === totalPages ? "disabled" : ""
+                              }`}>
+                              <button
+                                className="page-link"
+                                onClick={() =>
+                                  handlePageChange(currentPage + 1)
+                                }>
+                                Next
+                              </button>
+                            </li>
+                          </ul>
+                        </nav>
                       )}
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* Footer or other sections here */}
             </div>
           </div>
         </div>

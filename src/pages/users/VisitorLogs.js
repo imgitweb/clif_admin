@@ -1,53 +1,54 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Topheader from "../../component/Topheader";
 import axios from "axios";
 import API_URL from "../../config";
 
+const ITEMS_PER_PAGE = 10;
+
 const VisitorLogs = () => {
   const [allVisitors, setAllVisitors] = useState([]);
-  const [filteredVisitors, setFilteredVisitors] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   const [dateFilter, setDateFilter] = useState("all"); // all, today, yesterday, last7days, last30days, custom
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [durationFilter, setDurationFilter] = useState("all"); // all, short, medium, long
 
+  const [currentPage, setCurrentPage] = useState(1);
+
   useEffect(() => {
     fetchVisitorLogs();
   }, []);
 
+  // Reset to first page when filters change
   useEffect(() => {
-    applyFilters();
-  }, [allVisitors, dateFilter, customStartDate, customEndDate, durationFilter]);
+    setCurrentPage(1);
+  }, [dateFilter, customStartDate, customEndDate, durationFilter]);
 
   const fetchVisitorLogs = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await axios.get(`${API_URL}/log/visiter`);
       if (response.status === 200) {
-        console.log(response.data);
         setAllVisitors(response.data.visitors || []);
+      } else {
+        setError("Failed to fetch visitor logs. Please try again later.");
       }
     } catch (error) {
       console.error("Error fetching visitor logs", error);
+      setError("An error occurred while fetching visitor logs.");
     } finally {
       setLoading(false);
     }
   };
 
-  const applyFilters = () => {
+  // Memoized filtered visitors for performance
+  const filteredVisitors = useMemo(() => {
     let filtered = [...allVisitors];
 
-    // Apply date filter
-    filtered = filterVisitorsByDate(filtered);
-
-    // Apply duration filter
-    filtered = filterVisitorsByDuration(filtered);
-
-    setFilteredVisitors(filtered);
-  };
-
-  const filterVisitorsByDate = (visitors) => {
+    // Date filter
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
@@ -59,52 +60,70 @@ const VisitorLogs = () => {
 
     switch (dateFilter) {
       case "today":
-        return visitors.filter(
+        filtered = filtered.filter(
           (visitor) => new Date(visitor.createdAt) >= today
         );
+        break;
       case "yesterday":
-        return visitors.filter((visitor) => {
+        filtered = filtered.filter((visitor) => {
           const visitDate = new Date(visitor.createdAt);
           return visitDate >= yesterday && visitDate < today;
         });
+        break;
       case "last7days":
-        return visitors.filter(
+        filtered = filtered.filter(
           (visitor) => new Date(visitor.createdAt) >= last7days
         );
+        break;
       case "last30days":
-        return visitors.filter(
+        filtered = filtered.filter(
           (visitor) => new Date(visitor.createdAt) >= last30days
         );
+        break;
       case "custom":
         if (customStartDate && customEndDate) {
           const startDate = new Date(customStartDate);
           const endDate = new Date(customEndDate);
-          endDate.setHours(23, 59, 59, 999); // Include the entire end date
-          return visitors.filter((visitor) => {
+          endDate.setHours(23, 59, 59, 999);
+          filtered = filtered.filter((visitor) => {
             const visitDate = new Date(visitor.createdAt);
             return visitDate >= startDate && visitDate <= endDate;
           });
         }
-        return visitors;
+        break;
       default:
-        return visitors;
+        break;
     }
-  };
 
-  const filterVisitorsByDuration = (visitors) => {
+    // Duration filter
     switch (durationFilter) {
       case "short":
-        return visitors.filter((visitor) => visitor.duration < 120); // Less than 2 minutes
+        filtered = filtered.filter((visitor) => visitor.duration < 120);
+        break;
       case "medium":
-        return visitors.filter(
+        filtered = filtered.filter(
           (visitor) => visitor.duration >= 120 && visitor.duration < 300
-        ); // 2-5 minutes
+        );
+        break;
       case "long":
-        return visitors.filter((visitor) => visitor.duration >= 300); // 5+ minutes
+        filtered = filtered.filter((visitor) => visitor.duration >= 300);
+        break;
       default:
-        return visitors;
+        break;
     }
-  };
+
+    return filtered;
+  }, [allVisitors, dateFilter, customStartDate, customEndDate, durationFilter]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredVisitors.length / ITEMS_PER_PAGE);
+
+  const paginatedVisitors = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredVisitors
+      .slice(start, start + ITEMS_PER_PAGE)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [filteredVisitors, currentPage]);
 
   const formatDateTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -228,6 +247,58 @@ const VisitorLogs = () => {
 
   const stats = getFilteredStats();
 
+  // Pagination controls JSX (placed below the table)
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const pages = [];
+    // Simple page range 1..totalPages, can be enhanced later
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(
+        <li
+          key={i}
+          className={`page-item ${i === currentPage ? "active" : ""}`}
+          aria-current={i === currentPage ? "page" : undefined}>
+          <button
+            className="page-link"
+            onClick={() => setCurrentPage(i)}
+            type="button">
+            {i}
+          </button>
+        </li>
+      );
+    }
+
+    return (
+      <nav aria-label="Visitor logs pagination">
+        <ul className="pagination justify-content-center">
+          <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+            <button
+              className="page-link"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              type="button"
+              aria-label="Previous">
+              &laquo;
+            </button>
+          </li>
+          {pages}
+          <li
+            className={`page-item ${
+              currentPage === totalPages ? "disabled" : ""
+            }`}>
+            <button
+              className="page-link"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              type="button"
+              aria-label="Next">
+              &raquo;
+            </button>
+          </li>
+        </ul>
+      </nav>
+    );
+  };
+
   return (
     <>
       <div className="main-wrapper">
@@ -292,6 +363,7 @@ const VisitorLogs = () => {
                           {loading ? " Loading..." : " Refresh Logs"}
                         </button>
                       </div>
+
                       {/* Stats Cards */}
                       <div className="row mb-4">
                         <div className="col-md-3">
@@ -357,10 +429,42 @@ const VisitorLogs = () => {
                                     <option value="custom">Custom Range</option>
                                   </select>
                                 </div>
-                                <div className="col-md-4">
+
+                                {dateFilter === "custom" && (
+                                  <>
+                                    <div className="col-md-4">
+                                      <label className="form-label fw-semibold mb-2">
+                                        Start Date
+                                      </label>
+                                      <input
+                                        type="date"
+                                        className="form-control"
+                                        value={customStartDate}
+                                        onChange={(e) =>
+                                          setCustomStartDate(e.target.value)
+                                        }
+                                      />
+                                    </div>
+                                    <div className="col-md-4">
+                                      <label className="form-label fw-semibold mb-2">
+                                        End Date
+                                      </label>
+                                      <input
+                                        type="date"
+                                        className="form-control"
+                                        value={customEndDate}
+                                        onChange={(e) =>
+                                          setCustomEndDate(e.target.value)
+                                        }
+                                        min={customStartDate}
+                                      />
+                                    </div>
+                                  </>
+                                )}
+
+                                <div className="col-md-4 mt-3 mt-md-0">
                                   <label className="form-label fw-semibold mb-2">
-                                    <i className="ti ti-clock me-2"></i>Duration
-                                    Filter
+                                    Duration Filter
                                   </label>
                                   <select
                                     className="form-select"
@@ -375,134 +479,65 @@ const VisitorLogs = () => {
                                     <option value="medium">
                                       Medium (2-5 min)
                                     </option>
-                                    <option value="long">Long (5+ min)</option>
+                                    <option value="long">
+                                      Long (&gt;= 5 min)
+                                    </option>
                                   </select>
                                 </div>
-                                {dateFilter === "custom" && (
-                                  <div className="col-md-4">
-                                    <div className="row">
-                                      <div className="col-6">
-                                        <label className="form-label fw-semibold mb-2">
-                                          From
-                                        </label>
-                                        <input
-                                          type="date"
-                                          className="form-control"
-                                          value={customStartDate}
-                                          onChange={(e) =>
-                                            setCustomStartDate(e.target.value)
-                                          }
-                                        />
-                                      </div>
-                                      <div className="col-6">
-                                        <label className="form-label fw-semibold mb-2">
-                                          To
-                                        </label>
-                                        <input
-                                          type="date"
-                                          className="form-control"
-                                          value={customEndDate}
-                                          onChange={(e) =>
-                                            setCustomEndDate(e.target.value)
-                                          }
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Filter Summary */}
-                      {(dateFilter !== "all" || durationFilter !== "all") && (
-                        <div className="alert alert-info mb-4">
-                          <div className="d-flex align-items-center justify-content-between">
-                            <div>
-                              <strong>Active Filters:</strong>
-                              {dateFilter !== "all" && (
-                                <span className="badge bg-primary ms-2">
-                                  {getDateRangeText()}
-                                </span>
-                              )}
-                              {durationFilter !== "all" && (
-                                <span className="badge bg-secondary ms-2">
-                                  {durationFilter === "short"
-                                    ? "Short visits"
-                                    : durationFilter === "medium"
-                                    ? "Medium visits"
-                                    : "Long visits"}
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              className="btn btn-outline-secondary btn-sm"
-                              onClick={() => {
-                                setDateFilter("all");
-                                setDurationFilter("all");
-                                setCustomStartDate("");
-                                setCustomEndDate("");
-                              }}>
-                              Clear Filters
-                            </button>
-                          </div>
+                      {/* Error Message */}
+                      {error && (
+                        <div className="alert alert-danger" role="alert">
+                          {error}
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-link ms-3"
+                            onClick={fetchVisitorLogs}>
+                            Retry
+                          </button>
                         </div>
                       )}
 
-                      {loading ? (
-                        <div className="text-center py-5">
-                          <div
-                            className="spinner-border text-primary"
-                            role="status">
-                            <span className="visually-hidden">Loading...</span>
-                          </div>
-                          <p className="mt-3 text-muted">
-                            Loading visitor logs...
-                          </p>
-                        </div>
-                      ) : filteredVisitors.length === 0 ? (
-                        <div className="text-center py-5">
-                          <div className="mb-3">
-                            <i
-                              className="ti ti-users"
-                              style={{ fontSize: "3rem", color: "#ccc" }}></i>
-                          </div>
-                          <h6 className="text-muted">No visitors found</h6>
-                          <p className="text-muted small">
-                            {allVisitors.length === 0
-                              ? "There are no visitor logs to display."
-                              : "No visitors match the selected filters. Try adjusting your filter criteria."}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="table-responsive">
-                          <table className="table table-striped table-hover">
-                            <thead className="table-dark">
+                      {/* Visitor Table */}
+                      <div className="table-responsive">
+                        <table className="table table-hover align-middle mb-0">
+                          <thead>
+                            <tr>
+                              <th>Date</th>
+                              <th>IP</th>
+                              <th>Location</th>
+                              <th>Last Page</th>
+                              <th>Duration</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {loading ? (
                               <tr>
-                                <th>Visit Time</th>
-                                <th>IP Address</th>
-                                <th>Location</th>
-                                <th>Last Page</th>
-                                <th>Duration</th>
-                                <th>Status</th>
+                                <td colSpan="6" className="text-center py-4">
+                                  Loading visitor logs...
+                                </td>
                               </tr>
-                            </thead>
-                            <tbody>
-                              {filteredVisitors
-                                .sort(
-                                  (a, b) =>
-                                    new Date(b.createdAt) -
-                                    new Date(a.createdAt)
-                                )
-                                .map((visitor, index) =>
-                                  renderVisitorRow(visitor, index)
-                                )}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                            ) : paginatedVisitors.length === 0 ? (
+                              <tr>
+                                <td colSpan="6" className="text-center py-4">
+                                  No visitors found for the selected filters.
+                                </td>
+                              </tr>
+                            ) : (
+                              paginatedVisitors.map(renderVisitorRow)
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination controls */}
+                      <div className="mt-3">{renderPagination()}</div>
                     </div>
                   </div>
                 </div>
