@@ -1,43 +1,45 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Topheader from "../../component/Topheader";
 import axios from "axios";
 import API_URL from "../../config";
 
+const ITEMS_PER_PAGE = 25;
+
 const FrontendLogs = () => {
   const [allLogs, setAllLogs] = useState([]);
   const [processedLogs, setProcessedLogs] = useState([]);
-  const [activeTab, setActiveTab] = useState("all"); // all, frontend, backend
-  const [filteredLogs, setFilteredLogs] = useState([]);
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchFrontendLogs();
   }, []);
 
-  useEffect(() => {
-    filterLogsByTab();
-  }, [processedLogs, activeTab]);
-
   const fetchFrontendLogs = async () => {
     try {
+      setLoading(true);
+      setError("");
       const response = await axios.get(`${API_URL}/logs`);
       if (response.status === 200) {
-        console.log(response.data);
         setAllLogs(response.data);
         processFrontendLogs(response.data);
       }
-    } catch (error) {
-      console.error("Error fetching logs", error);
+    } catch (err) {
+      console.error("Error fetching logs", err);
+      setError("Failed to fetch logs. Please try again later.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const processFrontendLogs = (logsData) => {
     const processedData = [];
 
-    // Process Frontend Logs
-    if (logsData && logsData.frontendLogs) {
-      Object.keys(logsData.frontendLogs).forEach((ipAddress) => {
-        const userLogs = logsData.frontendLogs[ipAddress];
-
+    if (logsData?.frontendLogs) {
+      Object.entries(logsData.frontendLogs).forEach(([ipAddress, userLogs]) => {
         userLogs.forEach((logEntry) => {
           logEntry.events.forEach((event) => {
             processedData.push({
@@ -54,16 +56,13 @@ const FrontendLogs = () => {
       });
     }
 
-    // Process Backend Logs
-    if (logsData && logsData.backendLogs) {
-      Object.keys(logsData.backendLogs).forEach((userId) => {
-        const userLogs = logsData.backendLogs[userId];
-
+    if (logsData?.backendLogs) {
+      Object.entries(logsData.backendLogs).forEach(([userId, userLogs]) => {
         userLogs.forEach((logEntry) => {
           logEntry.events.forEach((event) => {
             processedData.push({
               type: "backend",
-              userId: userId,
+              userId,
               date: logEntry.date,
               timestamp: event.timestamp,
               user: event.user,
@@ -84,18 +83,34 @@ const FrontendLogs = () => {
       });
     }
 
-    // Sort by latest date/timestamp first
     processedData.sort((a, b) => b.dateObj - a.dateObj);
-
     setProcessedLogs(processedData);
+    setCurrentPage(1);
   };
 
-  const filterLogsByTab = () => {
-    if (activeTab === "all") {
-      setFilteredLogs(processedLogs);
-    } else {
-      setFilteredLogs(processedLogs.filter((log) => log.type === activeTab));
-    }
+  const filteredLogs = useMemo(() => {
+    const tabFiltered =
+      activeTab === "all"
+        ? processedLogs
+        : processedLogs.filter((log) => log.type === activeTab);
+
+    if (!searchTerm.trim()) return tabFiltered;
+
+    const search = searchTerm.toLowerCase();
+    return tabFiltered.filter((log) =>
+      Object.values(log).join(" ").toLowerCase().includes(search)
+    );
+  }, [processedLogs, activeTab, searchTerm]);
+
+  const totalPages = Math.ceil(filteredLogs.length / ITEMS_PER_PAGE);
+  const paginatedLogs = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredLogs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredLogs, currentPage]);
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
   };
 
   const formatDateTime = (timestamp) => {
@@ -110,51 +125,37 @@ const FrontendLogs = () => {
     });
   };
 
+  const getBadgeClass = (type) =>
+    ({
+      error: "badge bg-danger",
+      warning: "badge bg-warning",
+      success: "badge bg-success",
+      info: "badge bg-info",
+    }[type] || "badge bg-info");
+
   const getMessageType = (message, type, status) => {
     if (type === "backend") {
       if (status >= 400) return "error";
       if (status >= 300) return "warning";
       return "success";
     } else {
-      if (message.includes("ERROR") || message.includes("not found")) {
+      if (message?.includes("ERROR") || message?.includes("not found"))
         return "error";
-      } else if (message.includes("ANALYSIS")) {
-        return "info";
-      } else if (message.includes("EVENT")) {
-        return "success";
-      }
+      if (message?.includes("ANALYSIS")) return "info";
+      if (message?.includes("EVENT")) return "success";
       return "info";
     }
-  };
-
-  const getBadgeClass = (type) => {
-    switch (type) {
-      case "error":
-        return "badge bg-danger";
-      case "warning":
-        return "badge bg-warning";
-      case "success":
-        return "badge bg-success";
-      default:
-        return "badge bg-info";
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    if (status >= 200 && status < 300) return "badge bg-success";
-    if (status >= 300 && status < 400) return "badge bg-warning";
-    if (status >= 400) return "badge bg-danger";
-    return "badge bg-secondary";
   };
 
   const extractEventData = (message) => {
     if (message.includes("EVENT:")) {
       const parts = message.split(" | ");
-      const eventType = parts[0].replace("EVENT: ", "");
-      const page =
-        parts.find((p) => p.startsWith("Page:"))?.replace("Page: ", "") ||
-        "N/A";
-      return { eventType, page };
+      return {
+        eventType: parts[0].replace("EVENT: ", ""),
+        page:
+          parts.find((p) => p.startsWith("Page:"))?.replace("Page: ", "") ||
+          "N/A",
+      };
     }
     return null;
   };
@@ -162,33 +163,24 @@ const FrontendLogs = () => {
   const renderFrontendLogRow = (log, index) => {
     const messageType = getMessageType(log.message, log.type);
     const eventData = extractEventData(log.message);
-
     return (
       <tr key={`frontend-${log.timestamp}-${index}`}>
-        <td>
-          <div className="fw-medium text-primary">
-            {formatDateTime(log.timestamp)}
-          </div>
-          <small className="text-muted">{log.date}</small>
-        </td>
+        <td>{formatDateTime(log.timestamp)}</td>
         <td>
           <span className="badge bg-primary">Frontend</span>
         </td>
         <td>
-          <code className="bg-light px-2 py-1 rounded">{log.ip}</code>
+          <code>{log.ip}</code>
         </td>
         <td>
           {eventData ? (
             <div>
-              <div className="fw-medium text-success">
-                {eventData.eventType}
-              </div>
+              <strong>{eventData.eventType}</strong>
+              <br />
               <small className="text-muted">Page: {eventData.page}</small>
             </div>
           ) : (
-            <div className="text-wrap" style={{ maxWidth: "300px" }}>
-              {log.message}
-            </div>
+            <div>{log.message}</div>
           )}
         </td>
         <td>
@@ -204,29 +196,22 @@ const FrontendLogs = () => {
 
   const renderBackendLogRow = (log, index) => {
     const messageType = getMessageType(null, log.type, log.status);
-
     return (
       <tr key={`backend-${log.timestamp}-${index}`}>
-        <td>
-          <div className="fw-medium text-primary">
-            {formatDateTime(log.timestamp)}
-          </div>
-          <small className="text-muted">{log.date}</small>
-        </td>
+        <td>{formatDateTime(log.timestamp)}</td>
         <td>
           <span className="badge bg-warning">Backend</span>
         </td>
         <td>
-          <code className="bg-light px-2 py-1 rounded">{log.ip}</code>
+          <code>{log.ip}</code>
         </td>
         <td>
-          <code className="bg-light px-2 py-1 rounded">{log.user}</code>
+          <code>{log.user}</code>
         </td>
         <td>
-          <div>
-            <span className="badge bg-secondary me-1">{log.method}</span>
-            <code>{log.path}</code>
-          </div>
+          <span className="badge bg-secondary me-1">{log.method}</span>
+          <code>{log.path}</code>
+          <br />
           <small className="text-muted">
             {log.device} | {log.os} | {log.browser}
           </small>
@@ -237,165 +222,172 @@ const FrontendLogs = () => {
           </span>
         </td>
         <td>
-          <span className={getStatusBadge(log.status)}>{log.status}</span>
+          <span
+            className={getBadgeClass(
+              getMessageType(null, log.type, log.status)
+            )}>
+            {log.status}
+          </span>
         </td>
         <td>
-          <small className="text-muted">{log.duration}</small>
+          <small>{log.duration}</small>
         </td>
       </tr>
     );
   };
 
   return (
-    <>
-      <div className="main-wrapper">
-        <Topheader />
-        <div className="">
-          <div className="page-wrapper mt-5">
-            <div className="container-fluid">
-              <div className="card bg-info-subtle shadow-none position-relative overflow-hidden mb-4">
-                <div className="card-body px-4 py-3">
-                  <div className="row align-items-center">
-                    <div className="col-9">
-                      <h4 className="fw-semibold mb-8">Application Logs</h4>
-                      <nav aria-label="breadcrumb">
-                        <ol className="breadcrumb">
-                          <li className="breadcrumb-item">
-                            <a
-                              className="text-muted text-decoration-none"
-                              href="../dark/index.html">
-                              Home
-                            </a>
-                          </li>
-                        </ol>
-                      </nav>
-                    </div>
-                    <div className="col-3">
-                      <div className="text-center mb-n5">
-                        <img
-                          src="../../assets/assets/images/backgrounds/welcome-bg.svg"
-                          alt="breadcrumb-img"
-                          className="img-fluid mb-n4"
-                        />
-                      </div>
+    <div className="main-wrapper">
+      <Topheader />
+      <div className="">
+        <div className="page-wrapper mt-5">
+          <div className="container-fluid">
+            <div className="card bg-info-subtle shadow-none position-relative overflow-hidden mb-4">
+              <div className="card-body px-4 py-3">
+                <div className="row align-items-center">
+                  <div className="col-9">
+                    <h4 className="fw-semibold mb-8">Application Logs</h4>
+                    <nav aria-label="breadcrumb">
+                      <ol className="breadcrumb">
+                        <li className="breadcrumb-item">
+                          <a
+                            className="text-muted text-decoration-none"
+                            href="../dark/index.html">
+                            Home
+                          </a>
+                        </li>
+                      </ol>
+                    </nav>
+                  </div>
+                  <div className="col-3">
+                    <div className="text-center mb-n5">
+                      <img
+                        src="../../assets/assets/images/backgrounds/welcome-bg.svg"
+                        alt="breadcrumb-img"
+                        className="img-fluid mb-n4"
+                      />
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className="row">
-                <div className="col-12">
-                  <div className="card shadow-sm">
-                    <div className="card-body">
-                      <div className="d-flex justify-content-between align-items-center mb-4">
-                        <div>
-                          <h5 className="mb-0">
-                            Latest Logs ({filteredLogs.length} entries)
-                          </h5>
-                          <small className="text-muted">
-                            Total: {processedLogs.length} | Frontend:{" "}
+            <div className="row">
+              <div className="col-12">
+                <div className="card shadow-sm">
+                  <div className="card-body">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <input
+                        type="text"
+                        className="form-control w-50"
+                        placeholder="Search logs..."
+                        value={searchTerm}
+                        onChange={handleSearch}
+                      />
+                      <button
+                        className="btn btn-sm btn-primary"
+                        onClick={fetchFrontendLogs}>
+                        Refresh Logs
+                      </button>
+                    </div>
+
+                    {/* Tabs */}
+                    <ul className="nav nav-tabs mb-3">
+                      {["all", "frontend", "backend"].map((tab) => (
+                        <li className="nav-item" key={tab}>
+                          <button
+                            className={`nav-link ${
+                              activeTab === tab ? "active" : ""
+                            }`}
+                            onClick={() => setActiveTab(tab)}>
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)} (
                             {
-                              processedLogs.filter((l) => l.type === "frontend")
-                                .length
-                            }{" "}
-                            | Backend:{" "}
-                            {
-                              processedLogs.filter((l) => l.type === "backend")
-                                .length
+                              processedLogs.filter(
+                                (l) => tab === "all" || l.type === tab
+                              ).length
                             }
-                          </small>
-                        </div>
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={fetchFrontendLogs}>
-                          <i className="ti ti-refresh"></i> Refresh Logs
-                        </button>
+                            )
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* Error Message */}
+                    {error && <div className="alert alert-danger">{error}</div>}
+                    {loading ? (
+                      <div className="text-center py-5">Loading logs...</div>
+                    ) : filteredLogs.length === 0 ? (
+                      <div className="text-center text-muted py-5">
+                        No logs to display.
                       </div>
-
-                      {/* Tabs */}
-                      <ul className="nav nav-tabs mb-4" role="tablist">
-                        <li className="nav-item">
-                          <button
-                            className={`nav-link ${
-                              activeTab === "all" ? "active" : ""
-                            }`}
-                            onClick={() => setActiveTab("all")}>
-                            All Logs ({processedLogs.length})
-                          </button>
-                        </li>
-                        <li className="nav-item">
-                          <button
-                            className={`nav-link ${
-                              activeTab === "frontend" ? "active" : ""
-                            }`}
-                            onClick={() => setActiveTab("frontend")}>
-                            Frontend (
-                            {
-                              processedLogs.filter((l) => l.type === "frontend")
-                                .length
-                            }
-                            )
-                          </button>
-                        </li>
-                        <li className="nav-item">
-                          <button
-                            className={`nav-link ${
-                              activeTab === "backend" ? "active" : ""
-                            }`}
-                            onClick={() => setActiveTab("backend")}>
-                            Backend (
-                            {
-                              processedLogs.filter((l) => l.type === "backend")
-                                .length
-                            }
-                            )
-                          </button>
-                        </li>
-                      </ul>
-
-                      {filteredLogs.length === 0 ? (
-                        <div className="text-center py-5">
-                          <div className="mb-3">
-                            <i
-                              className="ti ti-file-search"
-                              style={{ fontSize: "3rem", color: "#ccc" }}></i>
-                          </div>
-                          <h6 className="text-muted">No logs found</h6>
-                          <p className="text-muted small">
-                            There are no logs to display for the selected
-                            filter.
-                          </p>
-                        </div>
-                      ) : (
+                    ) : (
+                      <>
                         <div className="table-responsive">
-                          <table className="table table-striped table-hover">
+                          <table className="table table-striped">
                             <thead className="table-dark">
                               <tr>
                                 <th>Date & Time</th>
                                 <th>Type</th>
-                                <th>IP Address</th>
-                                {activeTab === "backend" ? <th>userId</th> : ""}
+                                <th>IP</th>
+                                {activeTab === "backend" && <th>User</th>}
                                 <th>Details</th>
                                 <th>Status</th>
                                 <th>Response</th>
+                                <th>Status</th>
+
                                 {activeTab === "backend" ? (
                                   <th>Duration</th>
                                 ) : (
-                                  <th>page</th>
+                                  <th>Page</th>
                                 )}
                               </tr>
                             </thead>
                             <tbody>
-                              {filteredLogs.map((log, index) => {
-                                return log.type === "frontend"
+                              {paginatedLogs.map((log, index) =>
+                                log.type === "frontend"
                                   ? renderFrontendLogRow(log, index)
-                                  : renderBackendLogRow(log, index);
-                              })}
+                                  : renderBackendLogRow(log, index)
+                              )}
                             </tbody>
                           </table>
                         </div>
-                      )}
-                    </div>
+
+                        {/* Pagination */}
+                        <div className="d-flex justify-content-between align-items-center mt-3">
+                          <span>
+                            Showing{" "}
+                            {Math.min(
+                              (currentPage - 1) * ITEMS_PER_PAGE + 1,
+                              filteredLogs.length
+                            )}
+                            –
+                            {Math.min(
+                              currentPage * ITEMS_PER_PAGE,
+                              filteredLogs.length
+                            )}{" "}
+                            of {filteredLogs.length}
+                          </span>
+                          <div>
+                            <button
+                              className="btn btn-sm btn-secondary me-2"
+                              disabled={currentPage === 1}
+                              onClick={() =>
+                                setCurrentPage((prev) => prev - 1)
+                              }>
+                              Prev
+                            </button>
+                            <button
+                              className="btn btn-sm btn-secondary"
+                              disabled={currentPage === totalPages}
+                              onClick={() =>
+                                setCurrentPage((prev) => prev + 1)
+                              }>
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -403,7 +395,7 @@ const FrontendLogs = () => {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
