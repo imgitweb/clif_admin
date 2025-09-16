@@ -201,6 +201,42 @@ export default function Leftbar({ onButtonClick }) {
                 <Link
                   className="sidebar-link has-arrow"
                   to="#0"
+                  aria-expanded={openDropdown === "templates"}
+                  onClick={() => toggleDropdown("templates")}>
+                  <span className="d-flex">
+                    {/* <i className="ti ti-user" /> */}
+                    <IdCard />
+                  </span>
+                  <span className="hide-menu">Templates</span>
+                </Link>
+                <ul
+                  className={`first-level ${
+                    openDropdown === "templates" ? "show" : "collapse"
+                  }`}
+                  aria-expanded={openDropdown === "templates"}>
+                  <li className="sidebar-item">
+                    <Link to="/add-templates" className="sidebar-link">
+                      <div className="round-16 d-flex align-items-center justify-content-center">
+                        {/* <i className="ti ti-user-plus" /> */}
+                        <CalendarPlus />
+                      </div>
+                      <span className="hide-menu">Add templates</span>
+                    </Link>
+                  </li>
+                  <li className="sidebar-item">
+                    <Link to="/templatess-list" className="sidebar-link">
+                      <div className="round-16 d-flex align-items-center justify-content-center">
+                        <i className="ti ti-list" />
+                      </div>
+                      <span className="hide-menu">templates List</span>
+                    </Link>
+                  </li>
+                </ul>
+              </li>
+              <li className="sidebar-item">
+                <Link
+                  className="sidebar-link has-arrow"
+                  to="#0"
                   aria-expanded={openDropdown === "logs"}
                   onClick={() => toggleDropdown("logs")}>
                   <span className="d-flex">

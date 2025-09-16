@@ -19,6 +19,7 @@ import PDFViewer from "./pages/books/PdfViewer";
 import FrontendLogs from "./pages/users/Frontendlogs";
 import VisitorLogs from "./pages/users/VisitorLogs";
 import UserActivity from "./pages/users/UserActivity";
+import AddTemplate from "./pages/templates/Addtemplates";
 
 function App() {
   return (
@@ -34,6 +35,10 @@ function App() {
         <Route path="/add-book" element={<AddBook />} />
         <Route path="/books-list" element={<BooksList />} />
         <Route path="/read-book" element={<PDFViewer />} />
+
+ {/* template Routes */}
+        <Route path="/add-templates" element={<AddTemplate />} />
+
         {/* user list */}
         <Route path="/users-list" element={<UsersList />} />
         <Route path="/users-list" element={<UsersList />} />
