@@ -20,6 +20,7 @@ import FrontendLogs from "./pages/users/Frontendlogs";
 import VisitorLogs from "./pages/users/VisitorLogs";
 import UserActivity from "./pages/users/UserActivity";
 import AddTemplate from "./pages/templates/Addtemplates";
+import ListTemplates from "./pages/templates/ListTemplates";
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
 
  {/* template Routes */}
         <Route path="/add-templates" element={<AddTemplate />} />
+        <Route path="/templatess-list" element={<ListTemplates />} />
 
         {/* user list */}
         <Route path="/users-list" element={<UsersList />} />
